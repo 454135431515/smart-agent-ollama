@@ -13,8 +13,10 @@ def get_weather(city: str) -> str:
         return "Error: OpenWeather API key not found."
 
     try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=ru"
-        response = requests.get(url, timeout=5).json()
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=ru"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        response = response.json()
         if response.get("cod") == 200:
             temp = response["main"]["temp"]
             desc = response["weather"][0]["description"]
