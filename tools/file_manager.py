@@ -12,7 +12,10 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     parameters={"type": "object", "properties": {"filename": {"type": "string"}}, "required": ["filename"]}
 )
 def read_file(filename: str) -> str:
-    file_path = os.path.join(ROOT_DIR, filename)
+    real_root = os.path.realpath(ROOT_DIR)
+    file_path  = os.path.realpath(os.path.join(ROOT_DIR, filename))
+    if not file_path.startswith(real_root + os.sep) and file_path != real_root:
+        return "Error: access denied: path outside project root."
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             content = file.read(MAX_FILE_READ_LENGTH)

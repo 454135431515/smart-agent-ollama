@@ -1,5 +1,5 @@
 import requests
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 from app.registry import tool
 
 @tool(
