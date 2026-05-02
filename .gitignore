@@ -1,5 +1,10 @@
-venv/
 __pycache__/
-.env
-notes.json
 *.pyc
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+notes.json

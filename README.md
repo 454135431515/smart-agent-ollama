@@ -36,16 +36,17 @@ Agent: [calls get_weather] → "Moscow: -3°C, light snow."
 ```
 main.py                  # entry point, REPL loop
 app/
-  agent.py               # ReAct loop, talks to Ollama
+  agent.py               # ReAct loop, talks to Ollama, max_iterations guard
   memory.py              # conversation history, sliding window
   registry.py            # @tool decorator + global tool registry
   dashboard.py           # startup banner
 tools/
-  weather.py             # OpenWeather integration
+  weather.py             # OpenWeather integration (HTTPS)
   finance.py             # CBR exchange rates
   math_tools.py          # calculator
   file_manager.py        # read_file, save_note, list_notes
   time_tools.py          # timezone clock
+pyproject.toml           # build metadata, requires Python >=3.11
 ```
 
 The `@tool` decorator auto-registers functions into a global registry and generates JSON schemas for the LLM tool-calling API. Adding a new tool is a single decorator + a function.
@@ -57,7 +58,7 @@ The `@tool` decorator auto-registers functions into a global registry and genera
    ollama pull qwen2.5:7b
 ```
 
-2. Clone and install:
+2. Clone and install (requires Python 3.11+):
 ```bash
    git clone https://github.com/<you>/smart-agent-ollama.git
    cd smart-agent-ollama
@@ -101,6 +102,14 @@ Honest list of known gaps, being addressed iteration by iteration:
 - Trade-offs between hardcoded prompts and structured tool schemas
 
 ## Changelog
+
+### 2026-05-02 (iteration 2)
+- Removed obsolete root-level files (`SmartAgent.py`, `SmartAgent_backup.py`, `SmartAgent_backup2.py`, `Biz_Agent.py`) and duplicate `tools/file_tools.py`.
+- Added `max_iterations=8` guard to agent loop — prevents infinite tool-calling cycles.
+- Added `timeout=60` and `raise_for_status()` to Ollama HTTP call.
+- Fixed OpenWeather URL from `http://` to `https://`; added `raise_for_status()` there and in CBR finance call.
+- Added `pyproject.toml` with `requires-python = ">=3.11"` and pinned dependencies.
+- Expanded `.gitignore` to cover `.venv/`, cache dirs, and build artifacts.
 
 ### 2026-05-02
 - Initial commit: working ReAct agent with 6 tools, modular structure, sliding window memory.

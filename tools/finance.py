@@ -16,6 +16,7 @@ def get_exchange_rate(currency_code: str) -> str:
 
     try:
         response = requests.get("https://www.cbr.ru/scripts/XML_daily.asp", timeout=5)
+        response.raise_for_status()
         tree = ET.fromstring(response.content)
         valute_id = currency_map[code]
 

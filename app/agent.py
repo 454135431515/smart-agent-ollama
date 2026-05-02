@@ -14,8 +14,9 @@ import tools.time_tools
 import tools.math_tools
 
 class SmartAgent:
-    def __init__(self):
+    def __init__(self, max_iterations: int = 8):
         self._url = os.getenv("OLLAMA_URL")
+        self._max_iterations = max_iterations
         self._model = os.getenv("MODEL_NAME")
         limit = int(os.getenv("MEMORY_LIMIT", "10"))
 
@@ -43,7 +44,7 @@ class SmartAgent:
     def process_input(self, user_text: str) -> None:
         self._memory.add({"role": "user", "content": user_text})
 
-        while True:
+        for iteration in range(self._max_iterations):
             payload = {
                 "model": self._model,
                 "messages": self._memory.get_all(),
@@ -52,7 +53,9 @@ class SmartAgent:
             }
 
             try:
-                response = requests.post(self._url, json=payload).json()
+                raw = requests.post(self._url, json=payload, timeout=60)
+                raw.raise_for_status()
+                response = raw.json()
                 message = response["choices"][0]["message"]
             except Exception as error:
                 print(f"❌ Ollama API Error: {error}")
@@ -64,9 +67,12 @@ class SmartAgent:
             if not message.get("tool_calls"):
                 final_text = message.get("content", "Done.")
                 print(f"🤖 Агент: {final_text}")
-                break
+                return
 
             self._execute_tools(message["tool_calls"])
+
+        else:
+            print(f"⚠️  Агент: достигнут лимит итераций ({self._max_iterations}). Запрос не завершён.")
 
     def _execute_tools(self, tool_calls: list) -> None:
         for tool_call in tool_calls:
