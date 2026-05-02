@@ -28,8 +28,8 @@ Agent: [calls get_weather] → "Moscow: -3°C, light snow."
 
 - Python 3.11+
 - Ollama (local LLM runtime, tested with `qwen2.5:7b`)
-- `requests` for HTTP, `python-dotenv` for config
-- Standard library: `xml.etree`, `zoneinfo`, `json`, `os`
+- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing
+- Standard library: `ast`, `zoneinfo`, `json`, `os`
 
 ## Architecture
 
@@ -88,7 +88,7 @@ Honest list of known gaps, being addressed iteration by iteration:
 
 - No tests
 - No structured logging (only `print`)
-- Calculator uses `eval()` — needs AST-based replacement
+- Calculator uses AST-based evaluator (supports `+`, `-`, `*`, `/`, `%`, `**`)
 - Memory window can break tool-calling protocol on slicing
 - No input validation on tool arguments
 - No Docker setup
@@ -102,6 +102,12 @@ Honest list of known gaps, being addressed iteration by iteration:
 - Trade-offs between hardcoded prompts and structured tool schemas
 
 ## Changelog
+
+### 2026-05-02 (iteration 3)
+- Replaced `eval()` in calculator with an AST-based parser — blocks code injection, caps exponent at 100.
+- Added path-traversal guard to `read_file` — rejects `../../etc/passwd`, absolute paths, and symlinks outside project root.
+- Switched CBR XML parsing from stdlib `xml.etree` to `defusedxml` — protects against XXE and billion-laughs attacks.
+- Added `defusedxml==0.7.1` to `pyproject.toml`.
 
 ### 2026-05-02 (iteration 2)
 - Removed obsolete root-level files (`SmartAgent.py`, `SmartAgent_backup.py`, `SmartAgent_backup2.py`, `Biz_Agent.py`) and duplicate `tools/file_tools.py`.
