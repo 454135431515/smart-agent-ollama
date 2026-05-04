@@ -1,13 +1,13 @@
 from dotenv import load_dotenv
 
-# Load env vars before anything else so logging config can read them
-load_dotenv()
+load_dotenv()  # must run before app imports so env vars are visible to all modules
 
-from app.logging import setup_logging
+from app.agent import SmartAgent  # noqa: E402
+from app.dashboard import show_dashboard  # noqa: E402
+from app.logging import setup_logging  # noqa: E402
+
 setup_logging()
 
-from app.dashboard import show_dashboard
-from app.agent import SmartAgent
 
 def main() -> None:
     show_dashboard()
@@ -21,7 +21,7 @@ def main() -> None:
             user_input = input("\nВы: ").strip()
             if not user_input:
                 continue
-            if user_input.lower() in["exit", "quit", "выход"]:
+            if user_input.lower() in ["exit", "quit", "выход"]:
                 print("Завершение работы...")
                 break
 
@@ -37,5 +37,7 @@ def main() -> None:
         except KeyboardInterrupt:
             print("\nПринудительное завершение...")
             break
+
+
 if __name__ == "__main__":
     main()

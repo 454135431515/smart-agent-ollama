@@ -7,6 +7,7 @@ Two outputs:
   - logs/agent.jsonl  — one JSON object per line, all levels (DEBUG+)
   - stderr            — human-readable, WARNING+ only (avoids polluting the REPL)
 """
+
 import logging
 import sys
 from pathlib import Path
@@ -25,7 +26,8 @@ def setup_logging(log_dir: str = "logs") -> None:
     Path(log_dir).mkdir(exist_ok=True)
 
     structlog.configure(
-        processors=_SHARED_PROCESSORS + [
+        processors=_SHARED_PROCESSORS
+        + [
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
         logger_factory=structlog.stdlib.LoggerFactory(),
@@ -33,9 +35,7 @@ def setup_logging(log_dir: str = "logs") -> None:
         cache_logger_on_first_use=True,
     )
 
-    file_handler = logging.FileHandler(
-        f"{log_dir}/agent.jsonl", encoding="utf-8"
-    )
+    file_handler = logging.FileHandler(f"{log_dir}/agent.jsonl", encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(
         structlog.stdlib.ProcessorFormatter(

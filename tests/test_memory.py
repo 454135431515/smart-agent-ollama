@@ -1,5 +1,5 @@
 """Sanity tests for turn-aware MemoryManager."""
-import pytest
+
 from app.memory import MemoryManager
 
 SYSTEM = "You are a test assistant."
@@ -9,6 +9,7 @@ SYSTEM = "You are a test assistant."
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def user(text: str = "Hello") -> dict:
     return {"role": "user", "content": text}
 
@@ -17,10 +18,12 @@ def asst_tool_call(call_id: str = "call_1") -> dict:
     return {
         "role": "assistant",
         "content": None,
-        "tool_calls": [{
-            "id": call_id,
-            "function": {"name": "calculator", "arguments": '{"expression":"2+2"}'},
-        }],
+        "tool_calls": [
+            {
+                "id": call_id,
+                "function": {"name": "calculator", "arguments": '{"expression":"2+2"}'},
+            }
+        ],
     }
 
 
@@ -37,8 +40,7 @@ def _has_orphaned_tool_result(messages: list[dict]) -> bool:
     for idx, msg in enumerate(messages):
         if msg.get("role") == "tool":
             paired = any(
-                m.get("role") == "assistant" and m.get("tool_calls")
-                for m in messages[:idx]
+                m.get("role") == "assistant" and m.get("tool_calls") for m in messages[:idx]
             )
             if not paired:
                 return True
@@ -48,6 +50,7 @@ def _has_orphaned_tool_result(messages: list[dict]) -> bool:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_system_prompt_always_first():
     """System prompt must always be the first message, even after heavy trimming."""
@@ -127,7 +130,7 @@ def test_stats_counts():
 
     s = mem.stats()
     assert s["turns"] == 1
-    assert s["messages"] == 3   # system + user + assistant
+    assert s["messages"] == 3  # system + user + assistant
     assert s["tokens"] > 0
 
 

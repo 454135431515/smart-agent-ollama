@@ -1,6 +1,8 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
 from pydantic import BaseModel, Field
+
 from app.registry import tool
 
 
@@ -28,6 +30,8 @@ def get_current_time(city: str) -> str:
             city_time = datetime.now(ZoneInfo(tz_name))
             return f"Time in {city}: {city_time.strftime('%H:%M:%S')}."
 
-        return f"Timezone for {city} is unknown. Server time: {datetime.now().strftime('%H:%M:%S')}."
+        return (
+            f"Timezone for {city} is unknown. Server time: {datetime.now().strftime('%H:%M:%S')}."
+        )
     except Exception as error:
         return f"Error determining time: {error}"

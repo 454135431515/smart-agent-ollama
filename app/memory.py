@@ -1,6 +1,5 @@
-import tiktoken
+from app.tokenizer import ENCODER as _ENCODER
 
-_ENCODER = tiktoken.get_encoding("cl100k_base")
 _TOKENS_PER_MSG = 4  # overhead per message, per OpenAI cookbook
 
 
@@ -83,7 +82,6 @@ class MemoryManager:
     def _trim(self) -> None:
         # Always keep at least the most recent turn.
         while len(self._turns) > 1 and (
-            len(self._turns) > self._max_turns
-            or self._total_tokens() > self._max_tokens
+            len(self._turns) > self._max_turns or self._total_tokens() > self._max_tokens
         ):
             self._turns.pop(0)

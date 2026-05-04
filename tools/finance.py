@@ -13,9 +13,7 @@ _cache: TTLCache = TTLCache(maxsize=64, ttl=3600)
 
 
 class GetExchangeRateArgs(BaseModel):
-    currency_code: str = Field(
-        description="ISO 4217 currency code (USD, EUR, GBP, CNY, JPY, ...)"
-    )
+    currency_code: str = Field(description="ISO 4217 currency code (USD, EUR, GBP, CNY, JPY, ...)")
 
 
 def _fetch_cbr_xml() -> ET.Element:
@@ -56,7 +54,7 @@ def get_exchange_rate(currency_code: str) -> str:
     except ET.ParseError as exc:
         return json.dumps({"error": str(exc), "currency": code}, ensure_ascii=False)
 
-    value_node   = tree.find(f'.//Valute[CharCode="{code}"]/Value')
+    value_node = tree.find(f'.//Valute[CharCode="{code}"]/Value')
     nominal_node = tree.find(f'.//Valute[CharCode="{code}"]/Nominal')
 
     if value_node is None:
@@ -66,9 +64,9 @@ def get_exchange_rate(currency_code: str) -> str:
         )
         return result
 
-    value   = float(value_node.text.replace(",", "."))
+    value = float(value_node.text.replace(",", "."))
     nominal = int(nominal_node.text) if nominal_node is not None else 1
-    rate    = round(value / nominal, 4)
+    rate = round(value / nominal, 4)
 
     result = json.dumps(
         {
