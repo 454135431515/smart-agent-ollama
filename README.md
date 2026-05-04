@@ -28,7 +28,7 @@ Agent: [calls get_weather] → "Moscow: -3°C, light snow."
 
 - Python 3.11+
 - Ollama (local LLM runtime, tested with `qwen2.5:7b`)
-- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation
+- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation, `tiktoken` for token counting
 - Standard library: `ast`, `zoneinfo`, `json`, `os`
 
 ## Architecture
@@ -37,7 +37,7 @@ Agent: [calls get_weather] → "Moscow: -3°C, light snow."
 main.py                  # entry point, REPL loop
 app/
   agent.py               # ReAct loop, talks to Ollama, max_iterations guard
-  memory.py              # conversation history, sliding window
+  memory.py              # turn-aware sliding window, token budget, stats()
   registry.py            # @tool decorator + global tool registry
   dashboard.py           # startup banner
 tools/
@@ -86,7 +86,7 @@ The `@tool` decorator accepts a Pydantic `BaseModel` as `args_model`. It auto-re
 
 Honest list of known gaps, being addressed iteration by iteration:
 
-- No tests
+- Unit tests for MemoryManager (7 cases, pytest)
 - No structured logging (only `print`)
 - Calculator uses AST-based evaluator (supports `+`, `-`, `*`, `/`, `%`, `**`)
 - Memory window can break tool-calling protocol on slicing
@@ -102,6 +102,13 @@ Honest list of known gaps, being addressed iteration by iteration:
 - Trade-offs between hardcoded prompts and structured tool schemas
 
 ## Changelog
+
+### 2026-05-04 (iteration 5)
+- Rewrote `MemoryManager` to trim by whole turns instead of individual messages — prevents 400 errors from orphaned tool-results.
+- Added tiktoken-based token budget (`MEMORY_MAX_TOKENS`); trimming fires on either `max_turns` or `max_tokens`, whichever hits first.
+- Added `stats() -> dict` method returning `{turns, messages, tokens}`.
+- Added `tests/test_memory.py` — 7 pytest cases covering orphan prevention, system prompt survival, `clear()`, turn/token limits, and multi-tool turns.
+- Added `MEMORY_MAX_TURNS=8` and `MEMORY_MAX_TOKENS=4000` to `.env`.
 
 ### 2026-05-04 (iteration 4)
 - Replaced hand-written JSON schema dicts in `@tool` with Pydantic `BaseModel` — schemas now generated automatically, fields documented via `Field(description=...)`.
