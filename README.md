@@ -28,7 +28,7 @@ Agent: [calls get_weather] → "Moscow: -3°C, light snow."
 
 - Python 3.11+
 - Ollama (local LLM runtime, tested with `qwen2.5:7b`)
-- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation, `tiktoken` for token counting, `cachetools` for TTL caching
+- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation, `tiktoken` for token counting, `cachetools` for TTL caching, `structlog` for structured logging
 - Standard library: `ast`, `zoneinfo`, `json`, `os`
 
 ## Architecture
@@ -47,6 +47,8 @@ tools/
   file_manager.py        # read_file, save_note, list_notes
   time_tools.py          # timezone clock
 pyproject.toml           # build metadata, requires Python >=3.11
+logs/
+  agent.jsonl            # structured JSON logs (created on first run)
 ```
 
 The `@tool` decorator accepts a Pydantic `BaseModel` as `args_model`. It auto-registers a validating wrapper into the global registry and generates a clean JSON schema for the LLM tool-calling API. Invalid arguments from the LLM produce a readable `ValidationError` fed back as a tool result, letting the model self-correct. Adding a new tool is a model definition + a decorator + a function.
@@ -82,6 +84,24 @@ The `@tool` decorator accepts a Pydantic `BaseModel` as `args_model`. It auto-re
 
    Type `/clear` to wipe conversation memory, `exit` to quit.
 
+## Observability
+
+Every agent run writes structured JSON logs to `logs/agent.jsonl`. Each user turn gets a unique `turn_id` (uuid4) that appears on every log line in that turn — makes it trivial to trace a conversation end-to-end.
+
+Logged events per turn: `user_message` → `llm_request` → `llm_response` → `tool_call` (×N) → `turn_complete`.
+
+Watch live:
+```bash
+tail -f logs/agent.jsonl | jq .
+```
+
+Filter a single turn by ID:
+```bash
+grep "\"turn_id\": \"<uuid>\"" logs/agent.jsonl | jq .
+```
+
+Stderr shows only `WARNING`/`ERROR` level — the REPL stays clean.
+
 ## What's missing
 
 Honest list of known gaps, being addressed iteration by iteration:
@@ -102,6 +122,13 @@ Honest list of known gaps, being addressed iteration by iteration:
 - Trade-offs between hardcoded prompts and structured tool schemas
 
 ## Changelog
+
+### 2026-05-04 (iteration 7)
+- Added `app/logging.py` — structlog + stdlib logging; JSON to `logs/agent.jsonl`, human-readable WARNING+ to stderr.
+- All significant agent events now emit structured logs: `user_message`, `llm_request`, `llm_response`, `tool_call` (with `latency_ms`, `success`, `result_preview`), `turn_complete`.
+- Every turn gets a `turn_id` (uuid4) carried on all its log events.
+- `print()` calls in `agent.py` and `dashboard.py` annotated as `# UX output, not logging`; errors/warnings moved to `logger.error`/`logger.warning`.
+- Added `structlog>=24.0` to `pyproject.toml`.
 
 ### 2026-05-04 (iteration 6)
 - `get_exchange_rate` now returns structured JSON `{currency, rate_rub, source, date}` instead of a plain string.
