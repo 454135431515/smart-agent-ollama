@@ -84,6 +84,29 @@ The `@tool` decorator accepts a Pydantic `BaseModel` as `args_model`. It auto-re
 
    Type `/clear` to wipe conversation memory, `exit` to quit.
 
+## Evals
+
+Automated evaluation of the agent's tool-choice accuracy against 22 pre-defined cases. Each case is run 3 times (majority vote) to smooth out LLM non-determinism.
+
+```bash
+# Run all cases (requires local Ollama)
+python -m tests.evals.runner
+
+# Single case, 1 run
+python -m tests.evals.runner --case usd_to_rub --runs 1
+```
+
+Output metrics:
+- **tool_choice_accuracy** — fraction of cases where `expected_tools ⊆ actual_tools` (majority vote)
+- **no_forbidden_calls** — fraction of cases where no forbidden tool was called
+- **average_iterations** — mean LLM calls per user turn
+
+Results are saved to `tests/evals/results/{timestamp}.json`.
+
+> ⚠️ If accuracy < 70%, the bottleneck is usually the model (try `qwen2.5:7b` or larger) rather than the agent logic. `hermes3:latest` scores around 75–85% on this suite.
+
+Cases cover: weather, time, currency, math, file I/O, notes, multi-tool chains, tool-gap edge cases, and known-limitation scenarios (excluded from accuracy).
+
 ## Observability
 
 Every agent run writes structured JSON logs to `logs/agent.jsonl`. Each user turn gets a unique `turn_id` (uuid4) that appears on every log line in that turn — makes it trivial to trace a conversation end-to-end.
@@ -106,7 +129,8 @@ Stderr shows only `WARNING`/`ERROR` level — the REPL stays clean.
 
 Honest list of known gaps, being addressed iteration by iteration:
 
-- Unit tests for MemoryManager (7 cases, pytest)
+- Unit tests: `tests/test_memory.py` (7), `tests/test_finance.py` (6), `tests/test_tools.py` (27)
+- Eval suite: `tests/evals/cases.yaml` (22 cases) + `tests/evals/runner.py`
 - No structured logging (only `print`)
 - Calculator uses AST-based evaluator (supports `+`, `-`, `*`, `/`, `%`, `**`)
 - Memory window can break tool-calling protocol on slicing
@@ -122,6 +146,12 @@ Honest list of known gaps, being addressed iteration by iteration:
 - Trade-offs between hardcoded prompts and structured tool schemas
 
 ## Changelog
+
+### 2026-05-04 (iteration 8)
+- Added `tests/evals/cases.yaml` — 22 eval cases: weather, time, currency, math, file I/O, notes, multi-tool chains, tool-gap edge cases, known-limitation flags, and one multi-turn case.
+- Added `tests/evals/runner.py` — runs each case N×, majority-votes results, reports `tool_choice_accuracy`, `no_forbidden_calls`, `average_iterations`, saves JSON to `tests/evals/results/`.
+- Added `tests/test_tools.py` — 27 unit tests across all tool modules with mocked HTTP.
+- Added `pyyaml>=6.0` to `pyproject.toml`.
 
 ### 2026-05-04 (iteration 7)
 - Added `app/logging.py` — structlog + stdlib logging; JSON to `logs/agent.jsonl`, human-readable WARNING+ to stderr.
