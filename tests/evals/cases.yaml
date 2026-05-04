@@ -1,0 +1,155 @@
+# Smart Agent Eval Cases
+# ----------------------
+# expected_tools: null  → skip tool-choice check (only forbidden_tools checked)
+# expected_tools: []    → expect NO tools to be called
+# known_limitation: true → excluded from accuracy metrics, reported separately
+# inputs: [...]          → multi-turn; expected_tools checks the LAST turn
+
+# ── Weather ──────────────────────────────────────────────────────────────────
+
+- id: weather_simple
+  input: "Какая погода в Москве?"
+  expected_tools: ["get_weather"]
+  forbidden_tools: ["get_exchange_rate", "save_note", "calculator"]
+  description: "Basic weather query for a major Russian city"
+
+- id: weather_english_input
+  input: "What's the weather like in London?"
+  expected_tools: ["get_weather"]
+  forbidden_tools: ["get_exchange_rate"]
+  description: "Weather query in English"
+
+- id: weather_cyrillic_city
+  input: "Какая погода в Ессентуках?"
+  expected_tools: ["get_weather"]
+  known_limitation: true
+  description: "Small Russian city — OpenWeather may return city-not-found; tool choice is correct, result is not"
+
+# ── Time ─────────────────────────────────────────────────────────────────────
+
+- id: time_moscow
+  input: "Который час в Москве?"
+  expected_tools: ["get_current_time"]
+  forbidden_tools: ["get_weather", "get_exchange_rate"]
+  description: "Time query for a city in the hardcoded timezone map"
+
+- id: time_tokyo
+  input: "Сколько сейчас времени в Токио?"
+  expected_tools: ["get_current_time"]
+  forbidden_tools: ["get_weather"]
+  description: "Time query for Tokyo (in timezone map)"
+
+- id: time_unknown_city
+  input: "Сколько времени в Ессентуках?"
+  expected_tools: ["get_current_time"]
+  known_limitation: true
+  description: "Unknown city — agent correctly calls get_current_time but gets server-time fallback"
+
+# ── Currency ─────────────────────────────────────────────────────────────────
+
+- id: usd_to_rub
+  input: "Сколько 200 долларов в рублях?"
+  expected_tools: ["get_exchange_rate", "calculator"]
+  forbidden_tools: ["save_note"]
+  min_tool_calls: 2
+  description: "Full currency conversion chain: rate → calculator"
+
+- id: eur_to_rub
+  input: "Переведи 500 евро в рубли"
+  expected_tools: ["get_exchange_rate", "calculator"]
+  min_tool_calls: 2
+  description: "EUR conversion"
+
+- id: exchange_rate_only
+  input: "Какой сейчас курс доллара к рублю?"
+  expected_tools: ["get_exchange_rate"]
+  forbidden_tools: ["calculator"]
+  description: "Rate lookup only, no arithmetic needed"
+
+- id: jpy_rate
+  input: "Какой курс японской иены?"
+  expected_tools: ["get_exchange_rate"]
+  description: "Unusual currency — tests CharCode lookup beyond USD/EUR"
+
+# ── Math ─────────────────────────────────────────────────────────────────────
+
+- id: simple_math
+  input: "Сколько будет 15 умножить на 7?"
+  expected_tools: ["calculator"]
+  forbidden_tools: ["get_weather", "get_exchange_rate"]
+  description: "Direct arithmetic — no financial context"
+
+- id: complex_math
+  input: "Посчитай (144 + 256) делить на 20"
+  expected_tools: ["calculator"]
+  description: "Parenthesized expression"
+
+# ── Files & Notes ────────────────────────────────────────────────────────────
+
+- id: read_readme
+  input: "Прочитай файл README.md"
+  expected_tools: ["read_file"]
+  forbidden_tools: ["save_note"]
+  description: "Direct file read request"
+
+- id: save_note_simple
+  input: "Сохрани заметку с заголовком 'eval_test' и содержанием 'это тестовая заметка'"
+  expected_tools: ["save_note"]
+  description: "Explicit save-note instruction"
+
+- id: list_notes_simple
+  input: "Покажи все мои сохранённые заметки"
+  expected_tools: ["list_notes"]
+  forbidden_tools: ["save_note"]
+  description: "List notes — no write side-effects"
+
+# ── No-tool cases (model should answer from knowledge) ───────────────────────
+
+- id: greeting_no_tools
+  input: "Привет! Как тебя зовут?"
+  expected_tools: []
+  forbidden_tools: ["get_weather", "get_exchange_rate", "calculator"]
+  description: "Simple greeting — no tools needed"
+
+- id: general_knowledge
+  input: "Кто написал роман Война и мир?"
+  expected_tools: []
+  forbidden_tools: ["get_weather", "get_exchange_rate", "read_file"]
+  description: "General knowledge — LLM should answer without tools"
+
+# ── Tricky / negative cases ───────────────────────────────────────────────────
+
+- id: weather_dollar_tricky
+  input: "Как себя чувствует доллар сегодня?"
+  expected_tools: null
+  forbidden_tools: ["get_weather"]
+  description: "Russian financial slang — 'погода доллара' means exchange rate; model must NOT call get_weather"
+
+- id: combined_weather_and_rate
+  input: "Скажи погоду в Москве и курс евро к рублю"
+  expected_tools: ["get_weather", "get_exchange_rate"]
+  min_tool_calls: 2
+  description: "Multi-tool in one request"
+
+- id: currency_with_save
+  input: "Переведи 100 евро в рубли и сохрани результат как заметку с заголовком 'курс'"
+  expected_tools: ["get_exchange_rate", "calculator", "save_note"]
+  min_tool_calls: 3
+  description: "3-step chain: rate → calculator → save_note"
+
+- id: delete_note_missing
+  input: "Удали первую заметку из списка"
+  expected_tools: null
+  forbidden_tools: ["save_note"]
+  description: "Tool gap — delete_note doesn't exist; model must NOT substitute deletion with save_note"
+
+# ── Multi-turn ────────────────────────────────────────────────────────────────
+
+- id: currency_conversion_stale_cache
+  inputs:
+    - "Какой курс доллара?"
+    - "Сколько будет 500 долларов в рублях?"
+  check_turn: last
+  expected_tools: ["get_exchange_rate", "calculator"]
+  min_tool_calls: 2
+  description: "Second turn must call get_exchange_rate again, not rely on value in conversation memory"
