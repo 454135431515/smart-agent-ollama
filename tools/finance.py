@@ -1,11 +1,20 @@
 import requests
+from typing import Literal
+from pydantic import BaseModel, Field
 from defusedxml import ElementTree as ET
 from app.registry import tool
+
+
+class GetExchangeRateArgs(BaseModel):
+    currency_code: Literal["USD", "EUR"] = Field(
+        description="Currency code to convert to RUB: 'USD' or 'EUR'"
+    )
+
 
 @tool(
     name="get_exchange_rate",
     description="Get current official exchange rate (USD or EUR) to RUB.",
-    parameters={"type": "object", "properties": {"currency_code": {"type": "string", "description": "'USD' or 'EUR'"}}, "required": ["currency_code"]}
+    args_model=GetExchangeRateArgs,
 )
 def get_exchange_rate(currency_code: str) -> str:
     code = currency_code.upper().strip()

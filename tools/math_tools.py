@@ -1,10 +1,11 @@
 import ast
+from pydantic import BaseModel, Field
 from app.registry import tool
 
 _MAX_EXPR_LEN = 200
 _MAX_POW_EXP  = 100
 
-_ALLOWED_BINOPS  = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.Pow)
+_ALLOWED_BINOPS   = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.Pow)
 _ALLOWED_UNARYOPS = (ast.USub, ast.UAdd)
 
 
@@ -47,10 +48,14 @@ def _safe_eval(expr: str) -> float:
     return _visit(tree)
 
 
+class CalculatorArgs(BaseModel):
+    expression: str = Field(description="Math expression to evaluate, e.g. '2+2' or '100 * 92.5'")
+
+
 @tool(
     name="calculator",
     description="Mathematical calculator. Provide a valid math expression.",
-    parameters={"type": "object", "properties": {"expression": {"type": "string", "description": "e.g. '2+2' or '100 * 92.5'"}}, "required": ["expression"]}
+    args_model=CalculatorArgs,
 )
 def calculator(expression: str) -> str:
     try:

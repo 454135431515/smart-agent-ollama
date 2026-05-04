@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from datetime import datetime
+from pydantic import ValidationError
 
 from app.memory import MemoryManager
 from app.registry import TOOL_REGISTRY, TOOL_SCHEMAS
@@ -87,6 +88,8 @@ class SmartAgent:
             if func_name in TOOL_REGISTRY:
                 try:
                     result = str(TOOL_REGISTRY[func_name](**arguments))
+                except ValidationError as error:
+                    result = f"Invalid arguments: {error}"
                 except Exception as error:
                     result = f"Error executing tool: {error}"
             else:

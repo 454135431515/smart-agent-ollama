@@ -1,15 +1,30 @@
 import os
 import json
+from pydantic import BaseModel, Field
 from app.registry import tool
 
 MAX_FILE_READ_LENGTH = 3000
 # Root directory of the project (where main.py is)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+
+class ReadFileArgs(BaseModel):
+    filename: str = Field(description="Name of the file to read, relative to project root")
+
+
+class SaveNoteArgs(BaseModel):
+    title: str = Field(description="Title of the note")
+    content: str = Field(description="Text content of the note")
+
+
+class ListNotesArgs(BaseModel):
+    pass
+
+
 @tool(
     name="read_file",
     description="Reads a text file from the project root directory.",
-    parameters={"type": "object", "properties": {"filename": {"type": "string"}}, "required": ["filename"]}
+    args_model=ReadFileArgs,
 )
 def read_file(filename: str) -> str:
     real_root = os.path.realpath(ROOT_DIR)
@@ -25,14 +40,15 @@ def read_file(filename: str) -> str:
     except FileNotFoundError:
         return f"Error: File '{filename}' not found."
 
+
 @tool(
     name="save_note",
     description="Saves a note to the database.",
-    parameters={"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}}, "required": ["title", "content"]}
+    args_model=SaveNoteArgs,
 )
 def save_note(title: str, content: str) -> str:
     file_path = os.path.join(ROOT_DIR, "notes.json")
-    notes =[]
+    notes = []
     if os.path.exists(file_path):
         try:
             with open(file_path, "r", encoding="utf-8") as file:
@@ -45,10 +61,11 @@ def save_note(title: str, content: str) -> str:
         json.dump(notes, file, ensure_ascii=False, indent=4)
     return f"Success! Note '{title}' saved."
 
+
 @tool(
     name="list_notes",
     description="Lists all saved notes.",
-    parameters={"type": "object", "properties": {}}
+    args_model=ListNotesArgs,
 )
 def list_notes() -> str:
     file_path = os.path.join(ROOT_DIR, "notes.json")

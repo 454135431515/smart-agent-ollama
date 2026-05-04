@@ -1,11 +1,17 @@
 import os
 import requests
+from pydantic import BaseModel, Field
 from app.registry import tool
+
+
+class GetWeatherArgs(BaseModel):
+    city: str = Field(description="City name to get current weather for")
+
 
 @tool(
     name="get_weather",
     description="Get current weather for a city.",
-    parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    args_model=GetWeatherArgs,
 )
 def get_weather(city: str) -> str:
     api_key = os.getenv("OPENWEATHER_API_KEY")

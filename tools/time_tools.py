@@ -1,11 +1,17 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from pydantic import BaseModel, Field
 from app.registry import tool
+
+
+class GetCurrentTimeArgs(BaseModel):
+    city: str = Field(description="City name to get the current local time for")
+
 
 @tool(
     name="get_current_time",
     description="Get exact time in a specified city.",
-    parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    args_model=GetCurrentTimeArgs,
 )
 def get_current_time(city: str) -> str:
     timezones = {
