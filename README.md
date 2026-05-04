@@ -28,7 +28,7 @@ Agent: [calls get_weather] → "Moscow: -3°C, light snow."
 
 - Python 3.11+
 - Ollama (local LLM runtime, tested with `qwen2.5:7b`)
-- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation, `tiktoken` for token counting
+- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation, `tiktoken` for token counting, `cachetools` for TTL caching
 - Standard library: `ast`, `zoneinfo`, `json`, `os`
 
 ## Architecture
@@ -42,7 +42,7 @@ app/
   dashboard.py           # startup banner
 tools/
   weather.py             # OpenWeather integration (HTTPS)
-  finance.py             # CBR exchange rates
+  finance.py             # CBR exchange rates, all currencies, 1h TTL cache, JSON output
   math_tools.py          # calculator
   file_manager.py        # read_file, save_note, list_notes
   time_tools.py          # timezone clock
@@ -102,6 +102,14 @@ Honest list of known gaps, being addressed iteration by iteration:
 - Trade-offs between hardcoded prompts and structured tool schemas
 
 ## Changelog
+
+### 2026-05-04 (iteration 6)
+- `get_exchange_rate` now returns structured JSON `{currency, rate_rub, source, date}` instead of a plain string.
+- Supports any CBR currency (GBP, CNY, JPY, …) via `CharCode` search; handles `Nominal` correctly (JPY/KRW quoted per 100 units).
+- Added 1-hour TTL cache via `cachetools.TTLCache` — avoids redundant CBR requests within a session.
+- Split HTTP logic into `_fetch_cbr_xml()` with typed exceptions (`Timeout`, `HTTPError`, `ParseError`); errors return `{error, currency}` JSON so the LLM can reason about them.
+- Added `tests/test_finance.py` — 6 cases: USD success, JPY Nominal=100, unknown currency, timeout, bad XML, cache hit.
+- Added `cachetools>=5.0` to `pyproject.toml`.
 
 ### 2026-05-04 (iteration 5)
 - Rewrote `MemoryManager` to trim by whole turns instead of individual messages — prevents 400 errors from orphaned tool-results.
