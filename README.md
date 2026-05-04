@@ -66,7 +66,7 @@ The `@tool` decorator accepts a Pydantic `BaseModel` as `args_model`. It auto-re
    cd smart-agent-ollama
    python -m venv venv
    source venv/bin/activate  # Windows: venv\Scripts\activate
-   pip install -r requirements.txt
+   pip install -e .
 ```
 
 3. Create `.env`:
@@ -129,14 +129,12 @@ Stderr shows only `WARNING`/`ERROR` level — the REPL stays clean.
 
 Honest list of known gaps, being addressed iteration by iteration:
 
-- Unit tests: `tests/test_memory.py` (7), `tests/test_finance.py` (6), `tests/test_tools.py` (27)
-- Eval suite: `tests/evals/cases.yaml` (22 cases) + `tests/evals/runner.py`
-- No structured logging (only `print`)
-- Calculator uses AST-based evaluator (supports `+`, `-`, `*`, `/`, `%`, `**`)
-- Memory window can break tool-calling protocol on slicing
-- Tool argument validation via Pydantic (added in iteration 4)
-- No Docker setup
-- No evaluation harness for tool-choice accuracy
+- No Docker setup (one-command run not possible yet)
+- No CI pipeline (ruff, mypy, pytest not automated)
+- No `delete_note` tool — agent incorrectly substitutes deletion with `save_note`
+- Timezone tool hardcoded to 5 cities; unknown cities get server-time fallback
+- OpenWeather fails on Cyrillic names of small Russian cities (e.g. Ессентуки)
+- No `.env.example` — new users must read README to know which vars are needed
 
 ## What I'm learning
 
