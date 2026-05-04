@@ -1,7 +1,10 @@
 from dotenv import load_dotenv
 
-# Загружаем ключи до импорта остальных модулей
+# Load env vars before anything else so logging config can read them
 load_dotenv()
+
+from app.logging import setup_logging
+setup_logging()
 
 from app.dashboard import show_dashboard
 from app.agent import SmartAgent
