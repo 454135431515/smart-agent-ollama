@@ -19,7 +19,8 @@ class SmartAgent:
         self._url = os.getenv("OLLAMA_URL")
         self._max_iterations = max_iterations
         self._model = os.getenv("MODEL_NAME")
-        limit = int(os.getenv("MEMORY_LIMIT", "10"))
+        max_turns  = int(os.getenv("MEMORY_MAX_TURNS",  "8"))
+        max_tokens = int(os.getenv("MEMORY_MAX_TOKENS", "4000"))
 
         today_str = datetime.now().strftime("%Y-%m-%d, %A")
 
@@ -36,7 +37,11 @@ class SmartAgent:
             "   Шаг В: Только после получения ответа от калькулятора вызывай 'save_note' с итоговой суммой."
         )
 
-        self._memory = MemoryManager(system_prompt=system_instruction, max_history=limit)
+        self._memory = MemoryManager(
+            system_prompt=system_instruction,
+            max_turns=max_turns,
+            max_tokens=max_tokens,
+        )
 
     def clear_memory(self) -> None:
         """Пробрасывает команду очистки в менеджер памяти."""
