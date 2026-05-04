@@ -28,7 +28,7 @@ Agent: [calls get_weather] → "Moscow: -3°C, light snow."
 
 - Python 3.11+
 - Ollama (local LLM runtime, tested with `qwen2.5:7b`)
-- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing
+- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation
 - Standard library: `ast`, `zoneinfo`, `json`, `os`
 
 ## Architecture
@@ -49,7 +49,7 @@ tools/
 pyproject.toml           # build metadata, requires Python >=3.11
 ```
 
-The `@tool` decorator auto-registers functions into a global registry and generates JSON schemas for the LLM tool-calling API. Adding a new tool is a single decorator + a function.
+The `@tool` decorator accepts a Pydantic `BaseModel` as `args_model`. It auto-registers a validating wrapper into the global registry and generates a clean JSON schema for the LLM tool-calling API. Invalid arguments from the LLM produce a readable `ValidationError` fed back as a tool result, letting the model self-correct. Adding a new tool is a model definition + a decorator + a function.
 
 ## Setup
 
@@ -90,7 +90,7 @@ Honest list of known gaps, being addressed iteration by iteration:
 - No structured logging (only `print`)
 - Calculator uses AST-based evaluator (supports `+`, `-`, `*`, `/`, `%`, `**`)
 - Memory window can break tool-calling protocol on slicing
-- No input validation on tool arguments
+- Tool argument validation via Pydantic (added in iteration 4)
 - No Docker setup
 - No evaluation harness for tool-choice accuracy
 
@@ -102,6 +102,12 @@ Honest list of known gaps, being addressed iteration by iteration:
 - Trade-offs between hardcoded prompts and structured tool schemas
 
 ## Changelog
+
+### 2026-05-04 (iteration 4)
+- Replaced hand-written JSON schema dicts in `@tool` with Pydantic `BaseModel` — schemas now generated automatically, fields documented via `Field(description=...)`.
+- `currency_code` in `get_exchange_rate` is now `Literal["USD", "EUR"]` — generates `enum` in schema, rejects invalid values before the function runs.
+- `ValidationError` from Pydantic is returned as a structured tool-result message so the LLM can self-correct.
+- Added `pydantic>=2.0` to `pyproject.toml`.
 
 ### 2026-05-02 (iteration 3)
 - Replaced `eval()` in calculator with an AST-based parser — blocks code injection, caps exponent at 100.
