@@ -1,4 +1,5 @@
 import json
+import xml.etree.ElementTree as stdlib_ET
 from datetime import date
 
 import requests
@@ -16,7 +17,7 @@ class GetExchangeRateArgs(BaseModel):
     currency_code: str = Field(description="ISO 4217 currency code (USD, EUR, GBP, CNY, JPY, ...)")
 
 
-def _fetch_cbr_xml() -> ET.Element:
+def _fetch_cbr_xml() -> stdlib_ET.Element:
     """Fetch and parse CBR daily XML. Raises on network or parse errors."""
     try:
         response = requests.get(_CBR_URL, timeout=5)
@@ -64,8 +65,8 @@ def get_exchange_rate(currency_code: str) -> str:
         )
         return result
 
-    value = float(value_node.text.replace(",", "."))
-    nominal = int(nominal_node.text) if nominal_node is not None else 1
+    value = float((value_node.text or "0").replace(",", "."))
+    nominal = int(nominal_node.text or "1") if nominal_node is not None else 1
     rate = round(value / nominal, 4)
 
     result = json.dumps(
