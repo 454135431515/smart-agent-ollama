@@ -5,7 +5,7 @@ from app.registry import TOOL_REGISTRY
 
 
 def show_dashboard() -> None:
-    """Print the welcome banner. All output here is UX, not logging."""    now = datetime.now()
+    now = datetime.now()
     months = [
         "января",
         "февраля",
@@ -48,8 +48,6 @@ def show_dashboard() -> None:
 
     print("-" * 60)
     print(" 💡 ПОДСКАЗКИ:")
-        "  • Попробуйте спросить: «Сколько будет 200 долларов в рублях?»"
-    )
-        "  • Напишите /clear, чтобы я забыл прошлый разговор и мы начали заново."
-    )
+    print("  • Попробуйте спросить: «Сколько будет 200 долларов в рублях?»")
+    print("  • Напишите /clear, чтобы я забыл прошлый разговор и мы начали заново.")
     print("=" * 60 + "\n")

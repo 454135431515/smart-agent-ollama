@@ -14,8 +14,6 @@ def main() -> None:
 
     agent = SmartAgent()
 
-    print("💡 Hint: Ask 'How much is 200 dollars in rubles?' or 'Read report.txt'")
-
     while True:
         try:
             user_input = input("\nВы: ").strip()
@@ -25,12 +23,10 @@ def main() -> None:
                 print("Завершение работы...")
                 break
 
-            # --- НОВАЯ КОМАНДА ОЧИСТКИ ---
             if user_input.lower() == "/clear":
                 agent.clear_memory()
                 print("🧹 Память агента успешно очищена! Начинаем с чистого листа.")
                 continue
-            # -----------------------------
 
             agent.process_input(user_input)
 
