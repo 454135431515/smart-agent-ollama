@@ -11,6 +11,7 @@ Options:
     --case ID      Run a single case by id (default: all cases)
     --no-save      Skip saving results to disk
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,14 +32,13 @@ sys.path.insert(0, str(_ROOT))
 
 load_dotenv()
 
-from app.logging import setup_logging
+from app.agent import SmartAgent  # noqa: E402
+from app.logging import setup_logging  # noqa: E402
 
 setup_logging(log_dir="logs")
 
-from app.agent import SmartAgent  # noqa: E402 — must come after load_dotenv + setup_logging
-
-
 # ── Capture helper ────────────────────────────────────────────────────────────
+
 
 @contextmanager
 def _suppress_stdout():
@@ -75,6 +75,7 @@ class EvalAgent(SmartAgent):
 
 # ── Single case evaluation ────────────────────────────────────────────────────
 
+
 def _run_once(case: dict) -> tuple[list[str], int]:
     """Create a fresh agent and run all turns for this case.
 
@@ -99,7 +100,7 @@ def _run_once(case: dict) -> tuple[list[str], int]:
 
 
 def _check_run(actual: list[str], case: dict) -> dict[str, bool]:
-    expected = case.get("expected_tools")   # None → skip check
+    expected = case.get("expected_tools")  # None → skip check
     forbidden = case.get("forbidden_tools") or []
     min_calls = case.get("min_tool_calls", 0)
 
@@ -130,12 +131,16 @@ def evaluate_case(case: dict, n_runs: int) -> dict:
             actual, iters = _run_once(case)
         except Exception as exc:
             # Treat agent crash as a failed run, keep going
-            runs.append({
-                "actual_tools": [],
-                "iterations": 1,
-                "error": str(exc),
-                **{k: False for k in ("pass_expected", "pass_forbidden", "pass_min", "overall")},
-            })
+            runs.append(
+                {
+                    "actual_tools": [],
+                    "iterations": 1,
+                    "error": str(exc),
+                    **{
+                        k: False for k in ("pass_expected", "pass_forbidden", "pass_min", "overall")
+                    },
+                }
+            )
             continue
 
         checks = _check_run(actual, case)
@@ -170,6 +175,7 @@ def evaluate_case(case: dict, n_runs: int) -> dict:
 
 # ── Metrics aggregation ───────────────────────────────────────────────────────
 
+
 def compute_metrics(results: list[dict]) -> dict:
     standard = [r for r in results if not r["known_limitation"]]
     if not standard:
@@ -179,7 +185,8 @@ def compute_metrics(results: list[dict]) -> dict:
     accuracy_cases = [r for r in standard if r["expected_tools"] is not None]
     accuracy = (
         sum(r["pass_expected"] for r in accuracy_cases) / len(accuracy_cases)
-        if accuracy_cases else 1.0
+        if accuracy_cases
+        else 1.0
     )
 
     # All standard cases contribute to forbidden-call metric
@@ -197,10 +204,10 @@ def compute_metrics(results: list[dict]) -> dict:
 
 # ── Pretty printer ────────────────────────────────────────────────────────────
 
-_GREEN  = "\033[32m"
-_RED    = "\033[31m"
+_GREEN = "\033[32m"
+_RED = "\033[31m"
 _YELLOW = "\033[33m"
-_RESET  = "\033[0m"
+_RESET = "\033[0m"
 
 
 def _status(passed: bool, known: bool) -> str:
@@ -210,15 +217,17 @@ def _status(passed: bool, known: bool) -> str:
 
 
 def print_results(results: list[dict], metrics: dict, n_runs: int) -> None:
-    standard  = [r for r in results if not r["known_limitation"]]
+    standard = [r for r in results if not r["known_limitation"]]
     known_lim = [r for r in results if r["known_limitation"]]
 
     print("\n" + "=" * 70)
     print("  Smart Agent — Eval Results")
     print("=" * 70)
     print(f"  Runs per case : {n_runs}")
-    print(f"  Total cases   : {len(results)}  "
-          f"({len(standard)} standard, {len(known_lim)} known_limitation)")
+    print(
+        f"  Total cases   : {len(results)}  "
+        f"({len(standard)} standard, {len(known_lim)} known_limitation)"
+    )
     print()
 
     for r in results:
@@ -236,10 +245,10 @@ def print_results(results: list[dict], metrics: dict, n_runs: int) -> None:
 
     print()
     print("-" * 70)
-    acc_pct  = metrics["tool_choice_accuracy"]  * 100
-    forb_pct = metrics["no_forbidden_calls"]    * 100
+    acc_pct = metrics["tool_choice_accuracy"] * 100
+    forb_pct = metrics["no_forbidden_calls"] * 100
     acc_cases = [r for r in standard if r["expected_tools"] is not None]
-    pass_cnt  = sum(r["pass_expected"] for r in acc_cases)
+    pass_cnt = sum(r["pass_expected"] for r in acc_cases)
 
     print(f"  tool_choice_accuracy  : {pass_cnt}/{len(acc_cases)} = {acc_pct:.1f}%")
     print(f"  no_forbidden_calls    : {forb_pct:.1f}%")
@@ -262,11 +271,12 @@ def print_results(results: list[dict], metrics: dict, n_runs: int) -> None:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Smart Agent eval runner")
-    parser.add_argument("--runs",    type=int, default=3,  help="Runs per case (default 3)")
-    parser.add_argument("--case",    type=str, default=None, help="Run a single case by id")
-    parser.add_argument("--no-save", action="store_true",   help="Skip saving results JSON")
+    parser.add_argument("--runs", type=int, default=3, help="Runs per case (default 3)")
+    parser.add_argument("--case", type=str, default=None, help="Run a single case by id")
+    parser.add_argument("--no-save", action="store_true", help="Skip saving results JSON")
     args = parser.parse_args()
 
     cases_path = Path(__file__).parent / "cases.yaml"
