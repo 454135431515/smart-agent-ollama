@@ -17,6 +17,32 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4",
+    "mypy>=1.0",
+    "types-requests",
+    "pytest>=7.0",
+    "pytest-mock>=3.0",
+    "pyyaml>=6.0",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*", "tools*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+disable_error_code = ["import-untyped"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,6 +1,8 @@
 import os
+
 import requests
 from pydantic import BaseModel, Field
+
 from app.registry import tool
 
 
@@ -20,13 +22,13 @@ def get_weather(city: str) -> str:
 
     try:
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=ru"
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        response = response.json()
-        if response.get("cod") == 200:
-            temp = response["main"]["temp"]
-            desc = response["weather"][0]["description"]
+        resp = requests.get(url, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("cod") == 200:
+            temp = data["main"]["temp"]
+            desc = data["weather"][0]["description"]
             return f"Weather in {city}: {temp}°C, {desc}."
-        return f"API Error: {response.get('message', 'City not found')}"
+        return f"API Error: {data.get('message', 'City not found')}"
     except Exception as error:
         return f"Request error: {error}"

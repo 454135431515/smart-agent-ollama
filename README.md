@@ -1,200 +1,130 @@
 # Smart Agent
 
-Local AI agent on top of [Ollama](https://ollama.com/) with ReAct-style tool calling. Built as a learning project to understand agent loops, tool registries, and LLM tool-calling protocols end-to-end.
+Local ReAct agent built on Ollama. Demonstrates how tool-calling, context management, and evaluation work without framework abstractions.
 
-> ⚠️ Active refactoring. See [Changelog](#changelog) for current state.
+> 📹 Demo — *recording coming soon*
 
-## What it does
-
-Conversational agent that runs locally and decides which tools to call to answer the user. Currently handles:
-
-- Weather queries (OpenWeather API)
-- Currency exchange rates (Russian Central Bank XML feed)
-- Math calculations
-- Reading local text files
-- Saving and listing notes
-- Timezone-aware current time for a few hardcoded cities
-
-Example interactions:
-```
-You: How much is 200 dollars in rubles?
-Agent: [calls get_exchange_rate → calculator] → "200 USD = 18,500 RUB at today's CBR rate."
-
-You: What's the weather in Moscow?
-Agent: [calls get_weather] → "Moscow: -3°C, light snow."
-```
-
-## Tech stack
-
-- Python 3.11+
-- Ollama (local LLM runtime, tested with `qwen2.5:7b`)
-- `requests` for HTTP, `python-dotenv` for config, `defusedxml` for safe XML parsing, `pydantic>=2.0` for tool argument validation, `tiktoken` for token counting, `cachetools` for TTL caching, `structlog` for structured logging
-- Standard library: `ast`, `zoneinfo`, `json`, `os`
+---
 
 ## Architecture
 
 ```
-main.py                  # entry point, REPL loop
-app/
-  agent.py               # ReAct loop, talks to Ollama, max_iterations guard
-  memory.py              # turn-aware sliding window, token budget, stats()
-  registry.py            # @tool decorator + global tool registry
-  dashboard.py           # startup banner
-tools/
-  weather.py             # OpenWeather integration (HTTPS)
-  finance.py             # CBR exchange rates, all currencies, 1h TTL cache, JSON output
-  math_tools.py          # calculator
-  file_manager.py        # read_file, save_note, list_notes
-  time_tools.py          # timezone clock
-pyproject.toml           # build metadata, requires Python >=3.11
-logs/
-  agent.jsonl            # structured JSON logs (created on first run)
+ user REPL
+     │ input
+     ▼
+ SmartAgent ──── HTTP POST ────▶ Ollama (local LLM)
+     │                          qwen2.5:7b or hermes3
+     ├── MemoryManager
+     │   turn-based sliding window
+     │   dual budget: max_turns + max_tokens
+     │
+     └── ToolRegistry
+         Pydantic-validated schemas
+         ┌───────────┬──────────┬──────────┐
+         │  weather  │ finance  │  math    │
+         │  time     │  files   │  notes   │
+         └───────────┴──────────┴──────────┘
 ```
 
-The `@tool` decorator accepts a Pydantic `BaseModel` as `args_model`. It auto-registers a validating wrapper into the global registry and generates a clean JSON schema for the LLM tool-calling API. Invalid arguments from the LLM produce a readable `ValidationError` fed back as a tool result, letting the model self-correct. Adding a new tool is a model definition + a decorator + a function.
+---
 
-## Setup
-
-1. Install [Ollama](https://ollama.com/) and pull a tool-calling-capable model:
-```bash
-   ollama pull qwen2.5:7b
-```
-
-2. Clone and install (requires Python 3.11+):
-```bash
-   git clone https://github.com/<you>/smart-agent-ollama.git
-   cd smart-agent-ollama
-   python -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   pip install -e .
-```
-
-3. Create `.env`:
-```
-   OPENWEATHER_API_KEY=your_key_here
-   OLLAMA_URL=http://localhost:11434/v1/chat/completions
-   MODEL_NAME=qwen2.5:7b
-   MEMORY_LIMIT=10
-```
-
-4. Run:
-```bash
-   python main.py
-```
-
-   Type `/clear` to wipe conversation memory, `exit` to quit.
-
-## Evals
-
-Automated evaluation of the agent's tool-choice accuracy against 22 pre-defined cases. Each case is run 3 times (majority vote) to smooth out LLM non-determinism.
+## Quickstart (Docker)
 
 ```bash
-# Run all cases (requires local Ollama)
-python -m tests.evals.runner
+cp .env.example .env
+# set OPENWEATHER_API_KEY in .env
 
-# Single case, 1 run
-python -m tests.evals.runner --case usd_to_rub --runs 1
+# start Ollama in background, then run the agent interactively
+docker compose up ollama -d
+docker compose run --rm agent
 ```
 
-Output metrics:
-- **tool_choice_accuracy** — fraction of cases where `expected_tools ⊆ actual_tools` (majority vote)
-- **no_forbidden_calls** — fraction of cases where no forbidden tool was called
-- **average_iterations** — mean LLM calls per user turn
+On first run, pull a model inside Ollama:
 
-Results are saved to `tests/evals/results/{timestamp}.json`.
-
-> ⚠️ If accuracy < 70%, the bottleneck is usually the model (try `qwen2.5:7b` or larger) rather than the agent logic. `hermes3:latest` scores around 75–85% on this suite.
-
-Cases cover: weather, time, currency, math, file I/O, notes, multi-tool chains, tool-gap edge cases, and known-limitation scenarios (excluded from accuracy).
-
-## Observability
-
-Every agent run writes structured JSON logs to `logs/agent.jsonl`. Each user turn gets a unique `turn_id` (uuid4) that appears on every log line in that turn — makes it trivial to trace a conversation end-to-end.
-
-Logged events per turn: `user_message` → `llm_request` → `llm_response` → `tool_call` (×N) → `turn_complete`.
-
-Watch live:
 ```bash
+docker exec -it <ollama_container> ollama pull qwen2.5:7b
+```
+
+---
+
+## Local development
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env   # fill in OPENWEATHER_API_KEY; set OLLAMA_URL=http://localhost:11434/v1/chat/completions
+python main.py
+```
+
+Commands inside the REPL: `/clear` to reset memory, `exit` to quit.
+
+### Tests
+
+```bash
+pytest tests/ --ignore=tests/evals      # unit tests (no Ollama needed)
+python -m tests.evals.runner            # evals (requires local Ollama)
+python -m tests.evals.runner --runs 1 --case usd_to_rub   # single case
+```
+
+### Linting
+
+```bash
+ruff check .
+ruff format .
+mypy app/ tools/ --ignore-missing-imports
+```
+
+---
+
+## What's inside
+
+**ReAct loop** — `SmartAgent.process_input` runs a `for` loop bounded by `max_iterations=8`. Each iteration sends the full message history to Ollama. If the response contains `tool_calls`, the tools are executed and their results appended as `role: tool` messages. The loop exits when the model responds without tool calls, or emits a warning when the limit is hit.
+
+**Pydantic tool schemas** — every tool defines a `BaseModel` subclass passed to `@tool(args_model=...)`. The decorator generates a JSON schema for the LLM and wraps the function in a validating layer. A `ValidationError` is serialized and returned as the tool result, letting the model self-correct on the next iteration without crashing the loop.
+
+**Turn-based memory** — `MemoryManager` groups messages into turns (one user message + all following assistant/tool messages). Trimming always drops complete turns from the oldest end — it never splits an `assistant.tool_calls` message from its paired `role: tool` results, which would cause a 400 from the API. Two budgets run in parallel: `max_turns` and `max_tokens` (counted via tiktoken cl100k_base).
+
+**Structured logs** — `app/logging.py` configures structlog to write JSON to `logs/agent.jsonl` (all levels) and human-readable output to stderr (WARNING+). Every `process_input` call gets a `turn_id` (uuid4) that appears on all log events in that turn: `user_message` → `llm_request` → `llm_response` → `tool_call` → `turn_complete`.
+
+```bash
+# Trace a specific turn
+grep '"turn_id": "<uuid>"' logs/agent.jsonl | jq .
+
+# Watch live
 tail -f logs/agent.jsonl | jq .
 ```
 
-Filter a single turn by ID:
-```bash
-grep "\"turn_id\": \"<uuid>\"" logs/agent.jsonl | jq .
-```
+**Evals** — `tests/evals/runner.py` runs 22 pre-written cases against the live model, each 3× with majority voting. Reports `tool_choice_accuracy`, `no_forbidden_calls`, `average_iterations`, and saves `tests/evals/results/{timestamp}.json`.
 
-Stderr shows only `WARNING`/`ERROR` level — the REPL stays clean.
+---
 
-## What's missing
+## What I learned
 
-Honest list of known gaps, being addressed iteration by iteration:
+- **`list[-N:]` breaks the tool-calling protocol.** If the slice cuts between an `assistant.tool_calls` message and its `role: tool` result, the API returns 400. The fix isn't "be careful with slicing" — it's tracking turn boundaries and only ever dropping complete turns.
 
-- No Docker setup (one-command run not possible yet)
-- No CI pipeline (ruff, mypy, pytest not automated)
-- No `delete_note` tool — agent incorrectly substitutes deletion with `save_note`
-- Timezone tool hardcoded to 5 cities; unknown cities get server-time fallback
-- OpenWeather fails on Cyrillic names of small Russian cities (e.g. Ессентуки)
-- No `.env.example` — new users must read README to know which vars are needed
+- **`eval()` from LLM output is an attack surface, not a convenience.** Even with a character allowlist, an attacker can compose valid-looking expressions that do unexpected things. The AST-based parser solves this by whitelisting node types at the parse tree level: `Constant`, `BinOp`, `UnaryOp` — and nothing else.
 
-## What I'm learning
+- **Pydantic schemas do two jobs simultaneously.** They validate incoming arguments *and* generate the JSON schema the LLM uses to construct those arguments. Better `Field(description=...)` content measurably improves tool-call accuracy — the model reads the schema as documentation.
 
-- How ReAct loops actually work under the hood (vs. using LangChain abstractions)
-- OpenAI-compatible tool-calling protocol (Ollama implements it)
-- Why context window management is harder than `list[-N:]`
-- Trade-offs between hardcoded prompts and structured tool schemas
+- **JSON tool results beat human-readable strings for chaining.** `{"rate_rub": 91.5, "currency": "USD"}` lets the model chain tools without fragile parsing. A plain `"91.5 RUB per dollar"` breaks silently when the format changes.
 
-## Changelog
+- **Tool gap is a real failure mode.** When `delete_note` doesn't exist, the model substitutes `save_note`. This is invisible without an eval that explicitly checks `forbidden_tools: ["save_note"]`. Unit tests on individual tools would never catch it.
 
-### 2026-05-04 (iteration 8)
-- Added `tests/evals/cases.yaml` — 22 eval cases: weather, time, currency, math, file I/O, notes, multi-tool chains, tool-gap edge cases, known-limitation flags, and one multi-turn case.
-- Added `tests/evals/runner.py` — runs each case N×, majority-votes results, reports `tool_choice_accuracy`, `no_forbidden_calls`, `average_iterations`, saves JSON to `tests/evals/results/`.
-- Added `tests/test_tools.py` — 27 unit tests across all tool modules with mocked HTTP.
-- Added `pyyaml>=6.0` to `pyproject.toml`.
+- **Evals ≠ unit tests for AI systems.** `pytest tests/test_tools.py` verifies `_safe_eval("2+2") == 4.0`. `tests/evals/runner.py` verifies that the model *chooses* to call `calculator` when asked "сколько будет 2+2". Both layers are necessary. Only evals catch prompt regressions and model behavior drift.
 
-### 2026-05-04 (iteration 7)
-- Added `app/logging.py` — structlog + stdlib logging; JSON to `logs/agent.jsonl`, human-readable WARNING+ to stderr.
-- All significant agent events now emit structured logs: `user_message`, `llm_request`, `llm_response`, `tool_call` (with `latency_ms`, `success`, `result_preview`), `turn_complete`.
-- Every turn gets a `turn_id` (uuid4) carried on all its log events.
-- `print()` calls in `agent.py` and `dashboard.py` annotated as `# UX output, not logging`; errors/warnings moved to `logger.error`/`logger.warning`.
-- Added `structlog>=24.0` to `pyproject.toml`.
+- **`turn_id` in every log line makes stochastic bugs traceable.** A single `llm_error` event is useless without the surrounding context. Filtering `logs/agent.jsonl` by `turn_id` shows the exact input, token count, tool calls, and latencies that led to the error — which is all you need to reproduce it.
 
-### 2026-05-04 (iteration 6)
-- `get_exchange_rate` now returns structured JSON `{currency, rate_rub, source, date}` instead of a plain string.
-- Supports any CBR currency (GBP, CNY, JPY, …) via `CharCode` search; handles `Nominal` correctly (JPY/KRW quoted per 100 units).
-- Added 1-hour TTL cache via `cachetools.TTLCache` — avoids redundant CBR requests within a session.
-- Split HTTP logic into `_fetch_cbr_xml()` with typed exceptions (`Timeout`, `HTTPError`, `ParseError`); errors return `{error, currency}` JSON so the LLM can reason about them.
-- Added `tests/test_finance.py` — 6 cases: USD success, JPY Nominal=100, unknown currency, timeout, bad XML, cache hit.
-- Added `cachetools>=5.0` to `pyproject.toml`.
+---
 
-### 2026-05-04 (iteration 5)
-- Rewrote `MemoryManager` to trim by whole turns instead of individual messages — prevents 400 errors from orphaned tool-results.
-- Added tiktoken-based token budget (`MEMORY_MAX_TOKENS`); trimming fires on either `max_turns` or `max_tokens`, whichever hits first.
-- Added `stats() -> dict` method returning `{turns, messages, tokens}`.
-- Added `tests/test_memory.py` — 7 pytest cases covering orphan prevention, system prompt survival, `clear()`, turn/token limits, and multi-tool turns.
-- Added `MEMORY_MAX_TURNS=8` and `MEMORY_MAX_TOKENS=4000` to `.env`.
+## Roadmap
 
-### 2026-05-04 (iteration 4)
-- Replaced hand-written JSON schema dicts in `@tool` with Pydantic `BaseModel` — schemas now generated automatically, fields documented via `Field(description=...)`.
-- `currency_code` in `get_exchange_rate` is now `Literal["USD", "EUR"]` — generates `enum` in schema, rejects invalid values before the function runs.
-- `ValidationError` from Pydantic is returned as a structured tool-result message so the LLM can self-correct.
-- Added `pydantic>=2.0` to `pyproject.toml`.
+- [ ] RAG tool — retrieve from local documents via embedding search
+- [ ] Langfuse integration — trace agent turns in a UI, compare model versions
+- [ ] FastAPI wrapper — HTTP API so the agent can be called from other services
+- [ ] Adversarial eval cases — prompt injection, instruction override attempts
+- [ ] Auto-pull model on Docker startup (currently manual `ollama pull`)
 
-### 2026-05-02 (iteration 3)
-- Replaced `eval()` in calculator with an AST-based parser — blocks code injection, caps exponent at 100.
-- Added path-traversal guard to `read_file` — rejects `../../etc/passwd`, absolute paths, and symlinks outside project root.
-- Switched CBR XML parsing from stdlib `xml.etree` to `defusedxml` — protects against XXE and billion-laughs attacks.
-- Added `defusedxml==0.7.1` to `pyproject.toml`.
-
-### 2026-05-02 (iteration 2)
-- Removed obsolete root-level files (`SmartAgent.py`, `SmartAgent_backup.py`, `SmartAgent_backup2.py`, `Biz_Agent.py`) and duplicate `tools/file_tools.py`.
-- Added `max_iterations=8` guard to agent loop — prevents infinite tool-calling cycles.
-- Added `timeout=60` and `raise_for_status()` to Ollama HTTP call.
-- Fixed OpenWeather URL from `http://` to `https://`; added `raise_for_status()` there and in CBR finance call.
-- Added `pyproject.toml` with `requires-python = ">=3.11"` and pinned dependencies.
-- Expanded `.gitignore` to cover `.venv/`, cache dirs, and build artifacts.
-
-### 2026-05-02
-- Initial commit: working ReAct agent with 6 tools, modular structure, sliding window memory.
+---
 
 ## License
 

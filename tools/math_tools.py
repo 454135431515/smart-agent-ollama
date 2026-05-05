@@ -1,11 +1,13 @@
 import ast
+
 from pydantic import BaseModel, Field
+
 from app.registry import tool
 
 _MAX_EXPR_LEN = 200
-_MAX_POW_EXP  = 100
+_MAX_POW_EXP = 100
 
-_ALLOWED_BINOPS   = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.Pow)
+_ALLOWED_BINOPS = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.Pow)
 _ALLOWED_UNARYOPS = (ast.USub, ast.UAdd)
 
 
@@ -25,17 +27,17 @@ def _safe_eval(expr: str) -> float:
         if isinstance(node, ast.BinOp):
             if not isinstance(node.op, _ALLOWED_BINOPS):
                 raise ValueError(f"Unsupported operation: {type(node.op).__name__}")
-            left  = _visit(node.left)
+            left = _visit(node.left)
             right = _visit(node.right)
             if isinstance(node.op, ast.Pow) and right > _MAX_POW_EXP:
                 raise ValueError(f"Exponent too large (max {_MAX_POW_EXP}).")
             ops = {
-                ast.Add:  lambda a, b: a + b,
-                ast.Sub:  lambda a, b: a - b,
+                ast.Add: lambda a, b: a + b,
+                ast.Sub: lambda a, b: a - b,
                 ast.Mult: lambda a, b: a * b,
-                ast.Div:  lambda a, b: a / b,
-                ast.Mod:  lambda a, b: a % b,
-                ast.Pow:  lambda a, b: a ** b,
+                ast.Div: lambda a, b: a / b,
+                ast.Mod: lambda a, b: a % b,
+                ast.Pow: lambda a, b: a**b,
             }
             return ops[type(node.op)](left, right)
         if isinstance(node, ast.UnaryOp):

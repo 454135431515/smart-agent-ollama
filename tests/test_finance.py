@@ -1,4 +1,5 @@
 """Tests for tools/finance.py — uses unittest.mock to avoid live HTTP."""
+
 import json
 from datetime import date
 from unittest.mock import MagicMock, patch
@@ -19,6 +20,7 @@ def clear_cache():
 # ---------------------------------------------------------------------------
 # Minimal XML that mimics a real CBR response
 # ---------------------------------------------------------------------------
+
 
 def _cbr_xml(entries: list[tuple[str, str, int]]) -> bytes:
     """Build a minimal CBR XML byte-string.
@@ -43,6 +45,7 @@ def _mock_response(content: bytes, status: int = 200) -> MagicMock:
     resp.status_code = status
     if status != 200:
         import requests
+
         resp.raise_for_status.side_effect = requests.HTTPError(f"HTTP {status}")
     else:
         resp.raise_for_status.return_value = None
@@ -52,6 +55,7 @@ def _mock_response(content: bytes, status: int = 200) -> MagicMock:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_usd_success():
     xml = _cbr_xml([("USD", "92,5000", 1)])
@@ -88,6 +92,7 @@ def test_unknown_currency():
 
 def test_timeout():
     import requests as req_lib
+
     with patch("tools.finance.requests.get", side_effect=req_lib.Timeout):
         raw = finance_module.get_exchange_rate(currency_code="USD")
 

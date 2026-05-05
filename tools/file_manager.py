@@ -1,6 +1,8 @@
-import os
 import json
+import os
+
 from pydantic import BaseModel, Field
+
 from app.registry import tool
 
 MAX_FILE_READ_LENGTH = 3000
@@ -28,7 +30,7 @@ class ListNotesArgs(BaseModel):
 )
 def read_file(filename: str) -> str:
     real_root = os.path.realpath(ROOT_DIR)
-    file_path  = os.path.realpath(os.path.join(ROOT_DIR, filename))
+    file_path = os.path.realpath(os.path.join(ROOT_DIR, filename))
     if not file_path.startswith(real_root + os.sep) and file_path != real_root:
         return "Error: access denied: path outside project root."
     try:

@@ -8,3 +8,6 @@ venv/
 .ruff_cache/
 *.egg-info/
 notes.json
+logs/
+tests/evals/results/
+logs/

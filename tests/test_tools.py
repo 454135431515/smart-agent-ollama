@@ -3,28 +3,26 @@ Unit tests for all tool functions (with mocked HTTP where relevant).
 These test individual tool correctness — distinct from evals/, which test
 the agent's ability to *choose* the right tool.
 """
+
 import json
-import os
-import tempfile
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Force tool module imports so @tool decorators register
-import tools.weather
+import tools.file_manager
 import tools.math_tools
 import tools.time_tools
-import tools.file_manager
 
-from app.registry import TOOL_REGISTRY
+# Force tool module imports so @tool decorators register
+import tools.weather
+from tools.file_manager import list_notes, read_file, save_note
 from tools.math_tools import _safe_eval, calculator
 from tools.time_tools import get_current_time
-from tools.file_manager import read_file, save_note, list_notes
-
 
 # ─────────────────────────────────────────────────────────────────
 # calculator / _safe_eval
 # ─────────────────────────────────────────────────────────────────
+
 
 class TestSafeEval:
     def test_addition(self):
@@ -86,6 +84,7 @@ class TestCalculatorTool:
 # get_current_time
 # ─────────────────────────────────────────────────────────────────
 
+
 class TestGetCurrentTime:
     def test_known_city_moscow(self):
         result = get_current_time(city="москва")
@@ -110,6 +109,7 @@ class TestGetCurrentTime:
 # ─────────────────────────────────────────────────────────────────
 # get_weather
 # ─────────────────────────────────────────────────────────────────
+
 
 def _weather_response(city: str, temp: float = 5.0, desc: str = "ясно") -> MagicMock:
     resp = MagicMock()
@@ -146,6 +146,7 @@ class TestGetWeather:
 
     def test_network_error(self):
         import requests as req_lib
+
         with patch("tools.weather.requests.get", side_effect=req_lib.ConnectionError):
             result = tools.weather.get_weather(city="Moscow")
         assert "error" in result.lower()
@@ -154,6 +155,7 @@ class TestGetWeather:
 # ─────────────────────────────────────────────────────────────────
 # read_file / save_note / list_notes
 # ─────────────────────────────────────────────────────────────────
+
 
 class TestReadFile:
     def test_reads_existing_file(self):

@@ -5,22 +5,20 @@ import uuid
 from datetime import datetime
 
 import requests
-import tiktoken
 from pydantic import ValidationError
 
+# Side-effect imports: @tool decorators register tools into TOOL_REGISTRY
+import tools.file_manager  # noqa: F401
+import tools.finance  # noqa: F401
+import tools.math_tools  # noqa: F401
+import tools.time_tools  # noqa: F401
+import tools.weather  # noqa: F401
 from app.logging import get_logger
 from app.memory import MemoryManager
 from app.registry import TOOL_REGISTRY, TOOL_SCHEMAS
-
-# IMPORTANT: We must import tools so the @tool decorators execute!
-import tools.file_manager
-import tools.weather
-import tools.finance
-import tools.time_tools
-import tools.math_tools
+from app.tokenizer import ENCODER as _ENC
 
 logger = get_logger(__name__)
-_ENC = tiktoken.get_encoding("cl100k_base")
 
 
 def _token_count(text: str) -> int:
@@ -29,10 +27,10 @@ def _token_count(text: str) -> int:
 
 class SmartAgent:
     def __init__(self, max_iterations: int = 8):
-        self._url = os.getenv("OLLAMA_URL")
+        self._url = os.getenv("OLLAMA_URL") or "http://localhost:11434/v1/chat/completions"
         self._max_iterations = max_iterations
         self._model = os.getenv("MODEL_NAME")
-        max_turns  = int(os.getenv("MEMORY_MAX_TURNS",  "8"))
+        max_turns = int(os.getenv("MEMORY_MAX_TURNS", "8"))
         max_tokens = int(os.getenv("MEMORY_MAX_TOKENS", "4000"))
 
         today_str = datetime.now().strftime("%Y-%m-%d, %A")
@@ -53,8 +51,13 @@ class SmartAgent:
             max_turns=max_turns,
             max_tokens=max_tokens,
         )
-        logger.info("agent_init", model=self._model, max_turns=max_turns,
-                    max_tokens=max_tokens, max_iterations=max_iterations)
+        logger.info(
+            "agent_init",
+            model=self._model,
+            max_turns=max_turns,
+            max_tokens=max_tokens,
+            max_iterations=max_iterations,
+        )
 
     def clear_memory(self) -> None:
         self._memory.clear()
@@ -140,8 +143,7 @@ class SmartAgent:
                 total_latency_ms=total_ms,
             )
             print(  # UX output, not logging
-                f"⚠️  Агент: достигнут лимит итераций ({self._max_iterations}). "
-                "Запрос не завершён."
+                f"⚠️  Агент: достигнут лимит итераций ({self._max_iterations}). Запрос не завершён."
             )
 
     def _execute_tools(self, tool_calls: list, turn_id: str = "") -> None:
@@ -183,8 +185,10 @@ class SmartAgent:
 
             print(f"[✅ Result: {result[:100]}...]")  # UX output, not logging
 
-            self._memory.add({
-                "role": "tool",
-                "content": result,
-                "tool_call_id": tool_call["id"],
-            })
+            self._memory.add(
+                {
+                    "role": "tool",
+                    "content": result,
+                    "tool_call_id": tool_call["id"],
+                }
+            )
