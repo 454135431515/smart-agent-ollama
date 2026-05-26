@@ -24,6 +24,27 @@ This is a portfolio project. After every refactoring iteration, the README must 
 
 6. **Show the diff**: at the end of each iteration, briefly mention which README sections you changed and why.
 
+## When adding a new tool
+
+Every new tool requires three coordinated changes:
+
+1. `tools/<name>.py` — the tool itself, decorated with `@tool(...)`.
+2. `import tools.<name>  # noqa: F401` in `app/agent.py`. Without this, the `@tool` decorator never runs and the tool is invisible to `TOOL_REGISTRY` even though the file exists.
+3. Any new third-party dependencies pinned explicitly in `pyproject.toml`. Never rely on transitive deps coming in through another package — that's how PR #10 shipped with a working local install but a broken clean install.
+
+After the change, verify with a smoke check that the tool actually ends up in `TOOL_REGISTRY`:
+
+```bash
+python -c "
+from app.agent import SmartAgent
+from app.registry import TOOL_REGISTRY
+assert '<your_tool_name>' in TOOL_REGISTRY, 'tool not registered'
+print('OK')
+"
+```
+
+This is the check that would have caught PR #10's incomplete merge before review.
+
 ## Other rules
 
 - Don't expand scope. If the iteration prompt says "do X, Y, Z" — do exactly X, Y, Z, no bonus features.
