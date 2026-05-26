@@ -1,7 +1,9 @@
 import json
 import os
+from typing import cast
 
 import requests
+from eth_typing import ChecksumAddress
 from pydantic import BaseModel, Field, field_validator
 from web3 import Web3
 from web3.exceptions import Web3Exception
@@ -78,7 +80,7 @@ class GetGasPriceArgs(BaseModel):
 )
 def get_eth_balance(address: str) -> str:
     try:
-        balance_wei = _w3.eth.get_balance(address)
+        balance_wei = _w3.eth.get_balance(cast(ChecksumAddress, address))
         balance_eth = round(balance_wei / 10**18, 8)
         return json.dumps(
             {
@@ -114,7 +116,7 @@ def get_eth_balance(address: str) -> str:
 )
 def get_erc20_balance(address: str, token_contract: str) -> str:
     try:
-        contract = _w3.eth.contract(address=token_contract, abi=_ERC20_ABI)
+        contract = _w3.eth.contract(address=cast(ChecksumAddress, token_contract), abi=_ERC20_ABI)
         balance_raw = contract.functions.balanceOf(address).call()
         decimals = contract.functions.decimals().call()
         balance = round(balance_raw / 10**decimals, 8)
@@ -183,10 +185,10 @@ def get_recent_transactions(address: str, limit: int = 10) -> str:
         "module": "account",
         "action": "txlist",
         "address": address,
-        "startblock": 0,
-        "endblock": 99999999,
-        "page": 1,
-        "offset": limit,
+        "startblock": "0",
+        "endblock": "99999999",
+        "page": "1",
+        "offset": str(limit),
         "sort": "desc",
         "apikey": api_key,
     }
