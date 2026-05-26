@@ -11,6 +11,7 @@ from pydantic import ValidationError
 import tools.file_manager  # noqa: F401
 import tools.finance  # noqa: F401
 import tools.math_tools  # noqa: F401
+import tools.onchain  # noqa: F401
 import tools.time_tools  # noqa: F401
 import tools.weather  # noqa: F401
 from app.logging import get_logger
