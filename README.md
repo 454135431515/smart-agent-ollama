@@ -99,6 +99,45 @@ tail -f logs/agent.jsonl | jq .
 
 ---
 
+## On-chain tool (Base)
+
+Read-only EVM tool that queries Base L2 state via web3.py (JSON-RPC) and the Basescan API.
+
+- `get_eth_balance` — native ETH balance for an address, returned in both ETH and wei
+- `get_erc20_balance` — ERC-20 token balance; fetches decimals from the contract on-chain
+- `get_recent_transactions` — last N normal transactions for an address via Basescan (requires `BASESCAN_API_KEY`)
+- `get_gas_price` — current gas price from the node in gwei
+
+Base was chosen for EVM compatibility: swapping `BASE_RPC_URL` for an Ethereum, Arbitrum, or Optimism endpoint makes the same tools work there without code changes. Cheap gas and an active AI×Web3 ecosystem (Virtuals, Coinbase AgentKit) made it a natural starting point.
+
+Configuration: `BASE_RPC_URL` defaults to `https://mainnet.base.org` (public RPC, no key needed). `BASESCAN_API_KEY` is optional and only required for `get_recent_transactions`.
+
+RPC calls go from your machine directly to the Base node — no prompts, addresses, or conversation history are forwarded to third-party services, unlike hosted AI×Web3 products (Coinbase AgentKit, etc.) that route requests through their own infrastructure.
+
+```
+$ python main.py
+
+> What's the USDC balance for 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 and show me recent transactions?
+
+[get_erc20_balance] address=0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+                    contract=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+  → {"address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "token_contract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+     "balance_raw": 42310000, "balance": 42.31, "decimals": 6, "chain": "base"}
+
+[get_recent_transactions] address=0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 limit=5
+  → {"address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "count": 5, "transactions": [
+       {"hash": "0xabc1...", "from": "0xd8dA...", "to": "0x2626...", "value_eth": 0.0, "timestamp": 1748087092, "block_number": 30241817},
+       {"hash": "0xdef2...", "from": "0x4200...", "to": "0xd8dA...", "value_eth": 0.01, "timestamp": 1748023325, "block_number": 30228441},
+       ...
+     ]}
+
+The address holds 42.31 USDC on Base. Of the last 5 transactions, 3 are outbound contract
+calls (likely DEX or bridge interactions) and 2 are inbound ETH transfers. No large USDC
+outflows in this window.
+```
+
+---
+
 ## What I learned
 
 - **`list[-N:]` breaks the tool-calling protocol.** If the slice cuts between an `assistant.tool_calls` message and its `role: tool` result, the API returns 400. The fix isn't "be careful with slicing" — it's tracking turn boundaries and only ever dropping complete turns.
@@ -114,6 +153,8 @@ tail -f logs/agent.jsonl | jq .
 - **Evals ≠ unit tests for AI systems.** `pytest tests/test_tools.py` verifies `_safe_eval("2+2") == 4.0`. `tests/evals/runner.py` verifies that the model *chooses* to call `calculator` when asked "сколько будет 2+2". Both layers are necessary. Only evals catch prompt regressions and model behavior drift.
 
 - **`turn_id` in every log line makes stochastic bugs traceable.** A single `llm_error` event is useless without the surrounding context. Filtering `logs/agent.jsonl` by `turn_id` shows the exact input, token count, tool calls, and latencies that led to the error — which is all you need to reproduce it.
+
+- **Read-only is the right scope for an LLM-driven on-chain tool.** Signing transactions would mean trusting the model with a private key — but LLMs can hallucinate recipient addresses or amounts, and on-chain writes are irreversible. Separating reads from writes makes the feature genuinely useful without accepting that risk.
 
 ---
 
