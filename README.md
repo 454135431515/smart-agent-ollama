@@ -95,6 +95,8 @@ grep '"turn_id": "<uuid>"' logs/agent.jsonl | jq .
 tail -f logs/agent.jsonl | jq .
 ```
 
+**Startup market snapshot** — `app/dashboard.py` fetches USD/EUR rates (CBR) and Base gas price in parallel before the REPL starts. Uses daemon threads with a hard 3s deadline rather than `ThreadPoolExecutor`, whose `shutdown(wait=True)` on context exit would defeat the timeout. If anything is slow or unreachable, the row shows `n/a` and the agent starts anyway. Tool functions are reused directly — the `@tool` decorator returns the underlying function, so they're callable both from the LLM loop and from regular Python code.
+
 **Evals** — `tests/evals/runner.py` runs 22 pre-written cases against the live model, each 3× with majority voting. Reports `tool_choice_accuracy`, `no_forbidden_calls`, `average_iterations`, and saves `tests/evals/results/{timestamp}.json`.
 
 ---
@@ -146,6 +148,8 @@ outflows in this window.
 
 - **Pydantic schemas do two jobs simultaneously.** They validate incoming arguments *and* generate the JSON schema the LLM uses to construct those arguments. Better `Field(description=...)` content measurably improves tool-call accuracy — the model reads the schema as documentation.
 
+- **Tools should be dual-callable.** The `@tool` decorator registers a validating wrapper in `TOOL_REGISTRY` but returns the original function, so `from tools.onchain import get_gas_price` works as a normal call. That's what lets the startup dashboard reuse on-chain tools without going through the LLM or duplicating logic.
+
 - **JSON tool results beat human-readable strings for chaining.** `{"rate_rub": 91.5, "currency": "USD"}` lets the model chain tools without fragile parsing. A plain `"91.5 RUB per dollar"` breaks silently when the format changes.
 
 - **Tool gap is a real failure mode.** When `delete_note` doesn't exist, the model substitutes `save_note`. This is invisible without an eval that explicitly checks `forbidden_tools: ["save_note"]`. Unit tests on individual tools would never catch it.
@@ -172,6 +176,9 @@ outflows in this window.
 
 ### 2026-05-26
 - added `tests/test_onchain.py` — 12 unit tests for `tools/onchain.py` covering Pydantic address validation, `get_eth_balance`, `get_recent_transactions`, `get_erc20_balance`, and `get_gas_price`; all calls to `_w3` and `requests.get` are mocked via `unittest.mock`
+- fixed: on-chain tools were present in the repo but not registered in TOOL_REGISTRY; the agent could not call them. Added the missing side-effect import in app/agent.py and pinned eth-typing explicitly in pyproject.toml.
+- added: startup market snapshot — current USD and EUR rates plus Base gas price, fetched in parallel with a 3s hard deadline.
+- chore: ignore .claude/ worktrees.
 
 ### 2026-05-25
 - added `tools/onchain.py` — four read-only on-chain tools for Base L2: `get_eth_balance`, `get_erc20_balance`, `get_recent_transactions` (via Basescan API), `get_gas_price`; addresses validated and normalized to EIP-55 checksum form via Pydantic
