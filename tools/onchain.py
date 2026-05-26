@@ -57,7 +57,9 @@ class GetErc20BalanceArgs(BaseModel):
 
 class GetRecentTransactionsArgs(BaseModel):
     address: str = Field(description="Wallet address to query (0x...)")
-    limit: int = Field(default=10, ge=1, le=100, description="Number of recent transactions (1-100)")
+    limit: int = Field(
+        default=10, ge=1, le=100, description="Number of recent transactions (1-100)"
+    )
 
     @field_validator("address")
     @classmethod
@@ -79,17 +81,30 @@ def get_eth_balance(address: str) -> str:
         balance_wei = _w3.eth.get_balance(address)
         balance_eth = round(balance_wei / 10**18, 8)
         return json.dumps(
-            {"address": address, "balance_wei": balance_wei, "balance_eth": balance_eth, "chain": "base"},
+            {
+                "address": address,
+                "balance_wei": balance_wei,
+                "balance_eth": balance_eth,
+                "chain": "base",
+            },
             ensure_ascii=False,
         )
     except requests.Timeout as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
     except requests.ConnectionError as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
     except Web3Exception as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
     except Exception as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
 
 
 @tool(
@@ -116,22 +131,38 @@ def get_erc20_balance(address: str, token_contract: str) -> str:
         )
     except requests.Timeout as e:
         return json.dumps(
-            {"error": f"{type(e).__name__}: {e}", "address": address, "token_contract": token_contract},
+            {
+                "error": f"{type(e).__name__}: {e}",
+                "address": address,
+                "token_contract": token_contract,
+            },
             ensure_ascii=False,
         )
     except requests.ConnectionError as e:
         return json.dumps(
-            {"error": f"{type(e).__name__}: {e}", "address": address, "token_contract": token_contract},
+            {
+                "error": f"{type(e).__name__}: {e}",
+                "address": address,
+                "token_contract": token_contract,
+            },
             ensure_ascii=False,
         )
     except Web3Exception as e:
         return json.dumps(
-            {"error": f"{type(e).__name__}: {e}", "address": address, "token_contract": token_contract},
+            {
+                "error": f"{type(e).__name__}: {e}",
+                "address": address,
+                "token_contract": token_contract,
+            },
             ensure_ascii=False,
         )
     except Exception as e:
         return json.dumps(
-            {"error": f"{type(e).__name__}: {e}", "address": address, "token_contract": token_contract},
+            {
+                "error": f"{type(e).__name__}: {e}",
+                "address": address,
+                "token_contract": token_contract,
+            },
             ensure_ascii=False,
         )
 
@@ -144,7 +175,9 @@ def get_erc20_balance(address: str, token_contract: str) -> str:
 def get_recent_transactions(address: str, limit: int = 10) -> str:
     api_key = os.getenv("BASESCAN_API_KEY")
     if not api_key:
-        return json.dumps({"error": "BASESCAN_API_KEY not set", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": "BASESCAN_API_KEY not set", "address": address}, ensure_ascii=False
+        )
 
     params = {
         "module": "account",
@@ -163,22 +196,35 @@ def get_recent_transactions(address: str, limit: int = 10) -> str:
         resp.raise_for_status()
         data = resp.json()
     except requests.Timeout as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
     except requests.HTTPError as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
     except requests.ConnectionError as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
     except ValueError as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
     except Exception as e:
-        return json.dumps({"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"{type(e).__name__}: {e}", "address": address}, ensure_ascii=False
+        )
 
     if data.get("status") == "0":
         message = data.get("message", "")
         if "no transactions" in message.lower():
-            return json.dumps({"address": address, "count": 0, "transactions": []}, ensure_ascii=False)
+            return json.dumps(
+                {"address": address, "count": 0, "transactions": []}, ensure_ascii=False
+            )
         return json.dumps(
-            {"error": data.get("message", "Basescan API error"), "address": address}, ensure_ascii=False
+            {"error": data.get("message", "Basescan API error"), "address": address},
+            ensure_ascii=False,
         )
 
     txs = [
@@ -192,7 +238,9 @@ def get_recent_transactions(address: str, limit: int = 10) -> str:
         }
         for tx in data.get("result", [])
     ]
-    return json.dumps({"address": address, "count": len(txs), "transactions": txs}, ensure_ascii=False)
+    return json.dumps(
+        {"address": address, "count": len(txs), "transactions": txs}, ensure_ascii=False
+    )
 
 
 @tool(

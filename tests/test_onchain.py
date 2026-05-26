@@ -153,7 +153,9 @@ def test_get_erc20_balance_success():
 
 
 def test_get_gas_price_success():
-    with patch.object(type(_w3.eth), "gas_price", new_callable=PropertyMock, return_value=6_000_000):
+    with patch.object(
+        type(_w3.eth), "gas_price", new_callable=PropertyMock, return_value=6_000_000
+    ):
         raw = get_gas_price()
 
     data = json.loads(raw)
@@ -163,7 +165,8 @@ def test_get_gas_price_success():
 
 def test_get_gas_price_timeout():
     with patch.object(
-        type(_w3.eth), "gas_price",
+        type(_w3.eth),
+        "gas_price",
         new_callable=PropertyMock,
         side_effect=requests.Timeout("timeout"),
     ):
