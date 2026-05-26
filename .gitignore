@@ -11,3 +11,4 @@ notes.json
 logs/
 tests/evals/results/
 logs/
+.claude/
