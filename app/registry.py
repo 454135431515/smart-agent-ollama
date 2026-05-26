@@ -1,7 +1,9 @@
+from typing import Any, Callable
+
 from pydantic import BaseModel
 
-TOOL_REGISTRY = {}
-TOOL_SCHEMAS = []
+TOOL_REGISTRY: dict[str, Callable[..., Any]] = {}
+TOOL_SCHEMAS: list[dict[str, Any]] = []
 
 
 def _clean_schema(schema: dict) -> dict:
