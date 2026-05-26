@@ -23,6 +23,7 @@ Local ReAct agent built on Ollama. Demonstrates how tool-calling, context manage
          ┌───────────┬──────────┬──────────┐
          │  weather  │ finance  │  math    │
          │  time     │  files   │  notes   │
+         │  onchain  │          │          │
          └───────────┴──────────┴──────────┘
 ```
 
@@ -123,6 +124,16 @@ tail -f logs/agent.jsonl | jq .
 - [ ] FastAPI wrapper — HTTP API so the agent can be called from other services
 - [ ] Adversarial eval cases — prompt injection, instruction override attempts
 - [ ] Auto-pull model on Docker startup (currently manual `ollama pull`)
+
+---
+
+## Changelog
+
+### 2026-05-26
+- added `tests/test_onchain.py` — 12 unit tests for `tools/onchain.py` covering Pydantic address validation, `get_eth_balance`, `get_recent_transactions`, `get_erc20_balance`, and `get_gas_price`; all calls to `_w3` and `requests.get` are mocked via `unittest.mock`
+
+### 2026-05-25
+- added `tools/onchain.py` — four read-only on-chain tools for Base L2: `get_eth_balance`, `get_erc20_balance`, `get_recent_transactions` (via Basescan API), `get_gas_price`; addresses validated and normalized to EIP-55 checksum form via Pydantic
 
 ---
 
